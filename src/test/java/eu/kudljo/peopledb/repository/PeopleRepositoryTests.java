@@ -19,7 +19,7 @@ public class PeopleRepositoryTests {
     @BeforeEach
     void setUp() throws SQLException {
         connection = DriverManager
-                .getConnection("jdbc:h2:~/peopletest".replace("~", System.getProperty("user.home")));
+                .getConnection("jdbc:h2:C:\\squirrel-sql-4.7.1\\db\\peopletest");
     }
 
     @Test
