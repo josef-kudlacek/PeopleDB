@@ -1,5 +1,6 @@
 package eu.kudljo.peopledb.repository;
 
+import eu.kudljo.peopledb.exception.UnableToSaveException;
 import eu.kudljo.peopledb.model.Person;
 
 import java.sql.*;
@@ -13,7 +14,7 @@ public class PeopleRepository {
         this.connection = connection;
     }
 
-    public Person save(Person person) {
+    public Person save(Person person) throws UnableToSaveException {
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(SAVE_PERSON_SQL, PreparedStatement.RETURN_GENERATED_KEYS);
             preparedStatement.setString(1, person.getFirstName());
@@ -31,6 +32,7 @@ public class PeopleRepository {
             System.out.printf("Records affected: %d%n", recordsAffected);
         } catch (SQLException e) {
             e.printStackTrace();
+            throw new UnableToSaveException("Tried to save person: " + person);
         }
         return person;
     }
