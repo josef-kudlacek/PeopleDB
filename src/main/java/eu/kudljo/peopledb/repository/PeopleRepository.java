@@ -7,7 +7,6 @@ import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
-import java.util.Optional;
 
 import static java.util.stream.Collectors.joining;
 
@@ -34,42 +33,19 @@ public class PeopleRepository extends CRUDRepository<Person> {
         preparedStatement.setTimestamp(3, convertDobToTimestamp(entity.getDob()));
     }
 
-//    public Person save(Person entity) throws UnableToSaveException {
-//        try {
-//            PreparedStatement preparedStatement = connection.prepareStatement(SAVE_PERSON_SQL, PreparedStatement.RETURN_GENERATED_KEYS);
-//            preparedStatement.setString(1, entity.getFirstName());
-//            preparedStatement.setString(2, entity.getLastName());
-//            preparedStatement.setTimestamp(3, convertDobToTimestamp(entity.getDob()));
-//            int recordsAffected = preparedStatement.executeUpdate();
-//            ResultSet resultSet = preparedStatement.getGeneratedKeys();
-//            while (resultSet.next()) {
-//                long id = resultSet.getLong(1);
-//                entity.setId(id);
-//                System.out.println(entity);
-//            }
-//            System.out.printf("Records affected: %d%n", recordsAffected);
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//            throw new UnableToSaveException("Tried to save person: " + entity);
-//        }
-//        return entity;
-//    }
+    @Override
+    protected String getFindByIdSql() {
+        return FIND_PERSON_BY_ID_SQL;
+    }
 
-    public Optional<Person> findById(Long id) {
-        Person person = null;
-
-        try {
-            PreparedStatement preparedStatement = connection.prepareStatement(FIND_PERSON_BY_ID_SQL);
-            preparedStatement.setLong(1, id);
-            ResultSet resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                person = extractPersonFromResultSet(resultSet);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return Optional.ofNullable(person);
+    @Override
+    Person extractEntityFromResultSet(ResultSet resultSet) throws SQLException {
+        long personId = resultSet.getLong("ID");
+        String firstName = resultSet.getString("FIRST_NAME");
+        String lastName = resultSet.getString("LAST_NAME");
+        ZonedDateTime dob = ZonedDateTime.of(resultSet.getTimestamp("DOB").toLocalDateTime(), ZoneId.of("+0"));
+        BigDecimal salary = resultSet.getBigDecimal("SALARY");
+        return new Person(personId, firstName, lastName, dob, salary);
     }
 
     public long count() {
@@ -126,15 +102,6 @@ public class PeopleRepository extends CRUDRepository<Person> {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-    }
-
-    private static Person extractPersonFromResultSet(ResultSet resultSet) throws SQLException {
-        long personId = resultSet.getLong("ID");
-        String firstName = resultSet.getString("FIRST_NAME");
-        String lastName = resultSet.getString("LAST_NAME");
-        ZonedDateTime dob = ZonedDateTime.of(resultSet.getTimestamp("DOB").toLocalDateTime(), ZoneId.of("+0"));
-        BigDecimal salary = resultSet.getBigDecimal("SALARY");
-        return new Person(personId, firstName, lastName, dob, salary);
     }
 
     private static Timestamp convertDobToTimestamp(ZonedDateTime dob) {
