@@ -39,6 +39,7 @@ public class PeopleRepositoryTests {
                 1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6"))
         );
         Person savedPerson = peopleRepository.save(john);
+
         assertThat(savedPerson.getId()).isGreaterThan(0);
     }
 
@@ -54,5 +55,13 @@ public class PeopleRepositoryTests {
         Person savedPerson2 = peopleRepository.save(bobby);
 
         assertThat(savedPerson1.getId()).isNotEqualTo(savedPerson2.getId());
+    }
+
+    @Test
+    public void canFindPersonById() {
+        Person savedPerson = peopleRepository.save(new Person("test", "jackson", ZonedDateTime.now()));
+        Person foundPerson = peopleRepository.findById(savedPerson.getId());
+
+        assertThat(foundPerson).isEqualTo(savedPerson);
     }
 }

@@ -5,9 +5,11 @@ import eu.kudljo.peopledb.model.Person;
 
 import java.sql.*;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 public class PeopleRepository {
     public static final String SAVE_PERSON_SQL = "INSERT INTO PEOPLE (FIRST_NAME, LAST_NAME, DOB) VALUES (?, ?, ?)";
+    private static final String FIND_PERSON_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB FROM PEOPLE WHERE ID = ?";
     private final Connection connection;
 
     public PeopleRepository(Connection connection) {
@@ -34,6 +36,28 @@ public class PeopleRepository {
             e.printStackTrace();
             throw new UnableToSaveException("Tried to save person: " + person);
         }
+        return person;
+    }
+
+    public Person findById(Long id) {
+        Person person = null;
+
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(FIND_PERSON_SQL);
+            preparedStatement.setLong(1, id);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                long personId = resultSet.getLong("ID");
+                String firstName = resultSet.getString("FIRST_NAME");
+                String lastName = resultSet.getString("LAST_NAME");
+                ZonedDateTime dob = ZonedDateTime.of(resultSet.getTimestamp("DOB").toLocalDateTime(), ZoneId.of("+0"));
+                person = new Person(firstName, lastName, dob);
+                person.setId(personId);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
         return person;
     }
 }

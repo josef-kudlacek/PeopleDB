@@ -1,6 +1,9 @@
 package eu.kudljo.peopledb.model;
 
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 
 public class Person {
 
@@ -56,5 +59,25 @@ public class Person {
         sb.append(", dob=").append(dob);
         sb.append('}');
         return sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Person person = (Person) o;
+
+        // usage of truncate for remove offset of zone, which is not stored in database
+        return Objects.equals(id, person.id)
+                && Objects.equals(firstName, person.firstName)
+                && Objects.equals(lastName, person.lastName)
+                && dob.withZoneSameInstant(ZoneId.of("+0")).truncatedTo(ChronoUnit.SECONDS)
+                .equals(person.dob.withZoneSameInstant(ZoneId.of("+0")).truncatedTo(ChronoUnit.SECONDS)
+        );
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, firstName, lastName, dob);
     }
 }
