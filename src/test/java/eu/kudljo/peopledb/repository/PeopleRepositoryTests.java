@@ -11,6 +11,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -72,6 +73,49 @@ public class PeopleRepositoryTests {
         Optional<Person> foundPerson = peopleRepository.findById(-1L);
 
         assertThat(foundPerson).isEmpty();
+    }
+
+    @Test
+    public void canFindAll() {
+        peopleRepository.save(
+                new Person("John", "Smith",
+                        ZonedDateTime.of(1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6")))
+        );
+        peopleRepository.save(
+                new Person("John1", "Smith",
+                        ZonedDateTime.of(1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6")))
+        );
+        peopleRepository.save(
+                new Person("John2", "Smith",
+                        ZonedDateTime.of(1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6")))
+        );
+        peopleRepository.save(
+                new Person("John3", "Smith",
+                        ZonedDateTime.of(1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6")))
+        );
+        peopleRepository.save(
+                new Person("John4", "Smith",
+                        ZonedDateTime.of(1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6")))
+        );
+        peopleRepository.save(
+                new Person("John5", "Smith",
+                        ZonedDateTime.of(1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6")))
+        );
+        peopleRepository.save(
+                new Person("John6", "Smith",
+                        ZonedDateTime.of(1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6")))
+        );
+        peopleRepository.save(
+                new Person("John7", "Smith",
+                        ZonedDateTime.of(1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6")))
+        );
+        peopleRepository.save(
+                new Person("John8", "Smith",
+                        ZonedDateTime.of(1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6")))
+        );
+
+        List<Person> people = peopleRepository.findAll();
+        assertThat(people.size()).isGreaterThanOrEqualTo(9);
     }
 
     @Test

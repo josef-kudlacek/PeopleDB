@@ -2,11 +2,13 @@ package eu.kudljo.peopledb.repository;
 
 import eu.kudljo.peopledb.model.Entity;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
+
+import static java.util.stream.Collectors.joining;
 
 abstract class CRUDRepository<T extends Entity> {
     protected Connection connection;
@@ -50,7 +52,92 @@ abstract class CRUDRepository<T extends Entity> {
         return Optional.ofNullable(entity);
     }
 
+    public List<T> findAll() {
+        List<T> entities = new ArrayList<>();
+
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(getFindAllSql());
+            ResultSet resultSet = preparedStatement.executeQuery();
+            while (resultSet.next()) {
+                entities.add(extractEntityFromResultSet(resultSet));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return entities;
+    }
+
+    public long count() {
+        long count = 0;
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(getCountSql());
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                count = resultSet.getLong("COUNT");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return count;
+    }
+
+    public void delete(T entity) {
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(getDeleteSql());
+            preparedStatement.setLong(1, entity.getId());
+            int affectedRecordCount = preparedStatement.executeUpdate();
+            System.out.println(affectedRecordCount);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void delete(T... entities) {
+        try {
+            Statement statement = connection.createStatement();
+            String ids = Arrays.stream(entities)
+                    .map(T::getId)
+                    .map(String::valueOf)
+                    .collect(joining(", "));
+            int affectedRecordCount = statement.executeUpdate(getDeleteInSql().replace(":ids", ids));
+            System.out.println(affectedRecordCount);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public void update(T entity) {
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(GetUpdateSql());
+            mapForUpdate(entity, preparedStatement);
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    protected abstract String GetUpdateSql();
+
+    /**
+     *
+     * @return Should return a SQL String like:
+     * "DELETE FROM PEOPLE WHERE ID IN (:ids)"
+     * Be sure to include the '(:ids)' named parameter & call it 'ids'
+     */
+    protected abstract String getDeleteInSql();
+
+    protected abstract String getDeleteSql();
+
+    protected abstract String getCountSql();
+
+    protected abstract String getFindAllSql();
+
     abstract void mapForSave(T entity, PreparedStatement preparedStatement) throws SQLException;
+
+    abstract void mapForUpdate(T entity, PreparedStatement preparedStatement) throws SQLException;
 
     abstract String getSaveSql();
 
