@@ -1,6 +1,5 @@
 package eu.kudljo.peopledb.repository;
 
-import eu.kudljo.peopledb.exception.UnableToSaveException;
 import eu.kudljo.peopledb.model.Person;
 
 import java.math.BigDecimal;
@@ -12,39 +11,49 @@ import java.util.Optional;
 
 import static java.util.stream.Collectors.joining;
 
-public class PeopleRepository {
+public class PeopleRepository extends CRUDRepository<Person> {
     public static final String SAVE_PERSON_SQL = "INSERT INTO PEOPLE (FIRST_NAME, LAST_NAME, DOB) VALUES (?, ?, ?)";
     private static final String FIND_PERSON_BY_ID_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY FROM PEOPLE WHERE ID = ?";
     private static final String COUNT_PEOPLE_SQL = "SELECT COUNT(*) AS COUNT FROM PEOPLE";
     private static final String DELETE_PERSON_BY_ID_SQL = "DELETE FROM PEOPLE WHERE ID = ?";
-    private final Connection connection;
     private final String DELETE_PEOPLE_BY_ID_SQL = "DELETE FROM PEOPLE WHERE ID IN (:ids)";
 
     public PeopleRepository(Connection connection) {
-        this.connection = connection;
+        super(connection);
     }
 
-    public Person save(Person person) throws UnableToSaveException {
-        try {
-            PreparedStatement preparedStatement = connection.prepareStatement(SAVE_PERSON_SQL, PreparedStatement.RETURN_GENERATED_KEYS);
-            preparedStatement.setString(1, person.getFirstName());
-            preparedStatement.setString(2, person.getLastName());
-            preparedStatement.setTimestamp(3, convertDobToTimestamp(person.getDob())
-            );
-            int recordsAffected = preparedStatement.executeUpdate();
-            ResultSet resultSet = preparedStatement.getGeneratedKeys();
-            while (resultSet.next()) {
-                long id = resultSet.getLong(1);
-                person.setId(id);
-                System.out.println(person);
-            }
-            System.out.printf("Records affected: %d%n", recordsAffected);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            throw new UnableToSaveException("Tried to save person: " + person);
-        }
-        return person;
+    @Override
+    String getSaveSql() {
+        return SAVE_PERSON_SQL;
     }
+
+    @Override
+    void mapForSave(Person entity, PreparedStatement preparedStatement) throws SQLException {
+        preparedStatement.setString(1, entity.getFirstName());
+        preparedStatement.setString(2, entity.getLastName());
+        preparedStatement.setTimestamp(3, convertDobToTimestamp(entity.getDob()));
+    }
+
+//    public Person save(Person entity) throws UnableToSaveException {
+//        try {
+//            PreparedStatement preparedStatement = connection.prepareStatement(SAVE_PERSON_SQL, PreparedStatement.RETURN_GENERATED_KEYS);
+//            preparedStatement.setString(1, entity.getFirstName());
+//            preparedStatement.setString(2, entity.getLastName());
+//            preparedStatement.setTimestamp(3, convertDobToTimestamp(entity.getDob()));
+//            int recordsAffected = preparedStatement.executeUpdate();
+//            ResultSet resultSet = preparedStatement.getGeneratedKeys();
+//            while (resultSet.next()) {
+//                long id = resultSet.getLong(1);
+//                entity.setId(id);
+//                System.out.println(entity);
+//            }
+//            System.out.printf("Records affected: %d%n", recordsAffected);
+//        } catch (SQLException e) {
+//            e.printStackTrace();
+//            throw new UnableToSaveException("Tried to save person: " + entity);
+//        }
+//        return entity;
+//    }
 
     public Optional<Person> findById(Long id) {
         Person person = null;
