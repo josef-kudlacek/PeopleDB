@@ -3,6 +3,7 @@ package eu.kudljo.peopledb.repository;
 import eu.kudljo.peopledb.exception.UnableToSaveException;
 import eu.kudljo.peopledb.model.Person;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -13,7 +14,7 @@ import static java.util.stream.Collectors.joining;
 
 public class PeopleRepository {
     public static final String SAVE_PERSON_SQL = "INSERT INTO PEOPLE (FIRST_NAME, LAST_NAME, DOB) VALUES (?, ?, ?)";
-    private static final String FIND_PERSON_BY_ID_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB FROM PEOPLE WHERE ID = ?";
+    private static final String FIND_PERSON_BY_ID_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY FROM PEOPLE WHERE ID = ?";
     private static final String COUNT_PEOPLE_SQL = "SELECT COUNT(*) AS COUNT FROM PEOPLE";
     private static final String DELETE_PERSON_BY_ID_SQL = "DELETE FROM PEOPLE WHERE ID = ?";
     private final Connection connection;
@@ -28,8 +29,7 @@ public class PeopleRepository {
             PreparedStatement preparedStatement = connection.prepareStatement(SAVE_PERSON_SQL, PreparedStatement.RETURN_GENERATED_KEYS);
             preparedStatement.setString(1, person.getFirstName());
             preparedStatement.setString(2, person.getLastName());
-            preparedStatement.setTimestamp(3, Timestamp.valueOf(
-                    person.getDob().withZoneSameInstant(ZoneId.of("+0")).toLocalDateTime())
+            preparedStatement.setTimestamp(3, convertDobToTimestamp(person.getDob())
             );
             int recordsAffected = preparedStatement.executeUpdate();
             ResultSet resultSet = preparedStatement.getGeneratedKeys();
@@ -54,12 +54,7 @@ public class PeopleRepository {
             preparedStatement.setLong(1, id);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
-                long personId = resultSet.getLong("ID");
-                String firstName = resultSet.getString("FIRST_NAME");
-                String lastName = resultSet.getString("LAST_NAME");
-                ZonedDateTime dob = ZonedDateTime.of(resultSet.getTimestamp("DOB").toLocalDateTime(), ZoneId.of("+0"));
-                person = new Person(firstName, lastName, dob);
-                person.setId(personId);
+                person = extractPersonFromResultSet(resultSet);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -107,5 +102,33 @@ public class PeopleRepository {
             e.printStackTrace();
         }
 
+    }
+
+    public void update(Person person) {
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(
+                    "UPDATE PEOPLE SET FIRST_NAME = ?, LAST_NAME = ?, DOB = ?, SALARY = ? WHERE ID = ?");
+            preparedStatement.setString(1, person.getFirstName());
+            preparedStatement.setString(2, person.getLastName());
+            preparedStatement.setTimestamp(3, convertDobToTimestamp(person.getDob()));
+            preparedStatement.setBigDecimal(4, person.getSalary());
+            preparedStatement.setLong(5, person.getId());
+            preparedStatement.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static Person extractPersonFromResultSet(ResultSet resultSet) throws SQLException {
+        long personId = resultSet.getLong("ID");
+        String firstName = resultSet.getString("FIRST_NAME");
+        String lastName = resultSet.getString("LAST_NAME");
+        ZonedDateTime dob = ZonedDateTime.of(resultSet.getTimestamp("DOB").toLocalDateTime(), ZoneId.of("+0"));
+        BigDecimal salary = resultSet.getBigDecimal("SALARY");
+        return new Person(personId, firstName, lastName, dob, salary);
+    }
+
+    private static Timestamp convertDobToTimestamp(ZonedDateTime dob) {
+        return Timestamp.valueOf(dob.withZoneSameInstant(ZoneId.of("+0")).toLocalDateTime());
     }
 }

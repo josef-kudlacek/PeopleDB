@@ -5,15 +5,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Arrays;
 import java.util.Optional;
 
-import static java.util.stream.Collectors.joining;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class PeopleRepositoryTests {
@@ -122,20 +121,16 @@ public class PeopleRepositoryTests {
     }
 
     @Test
-    public void experiment() {
-        Person person1 = new Person(10L, null, null, null);
-        Person person2 = new Person(20L, null, null, null);
-        Person person3 = new Person(30L, null, null, null);
-        Person person4 = new Person(40L, null, null, null);
-        Person person5 = new Person(50L, null, null, null);
+    public void canUpdate() {
+        Person savedPerson = peopleRepository.save(new Person(
+                "John", "Smith", ZonedDateTime.of(
+                1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6")))
+        );
+        Person person1 = peopleRepository.findById(savedPerson.getId()).get();
+        savedPerson.setSalary(new BigDecimal("73000.28"));
+        peopleRepository.update(savedPerson);
+        Person person2 = peopleRepository.findById(savedPerson.getId()).get();
 
-        // DELETE FROM PERSON WHERE ID IN (10, 20, 30, 40, 50);
-
-        Person[] peopleArray = Arrays.asList(person1, person2, person3, person4, person5).toArray(new Person[]{});
-        String ids = Arrays.stream(peopleArray)
-                .map(Person::getId)
-                .map(String::valueOf)
-                .collect(joining(", "));
-        System.out.println(ids);
+        assertThat(person2.getSalary()).isNotEqualTo(person1.getSalary());
     }
 }
