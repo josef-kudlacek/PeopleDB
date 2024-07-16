@@ -11,6 +11,8 @@ import java.util.Optional;
 public class PeopleRepository {
     public static final String SAVE_PERSON_SQL = "INSERT INTO PEOPLE (FIRST_NAME, LAST_NAME, DOB) VALUES (?, ?, ?)";
     private static final String FIND_PERSON_BY_ID_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB FROM PEOPLE WHERE ID = ?";
+    private static final String COUNT_PEOPLE_SQL = "SELECT COUNT(*) AS COUNT FROM PEOPLE";
+    private static final String DELETE_PERSON_BY_ID_SQL = "DELETE FROM PEOPLE WHERE ID = ?";
     private final Connection connection;
 
     public PeopleRepository(Connection connection) {
@@ -60,5 +62,38 @@ public class PeopleRepository {
         }
 
         return Optional.ofNullable(person);
+    }
+
+    public long count() {
+        long count = 0;
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(COUNT_PEOPLE_SQL);
+            ResultSet resultSet = preparedStatement.executeQuery();
+            if (resultSet.next()) {
+                count = resultSet.getLong("COUNT");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return count;
+    }
+
+    public void delete(Person person) {
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement(DELETE_PERSON_BY_ID_SQL);
+            preparedStatement.setLong(1, person.getId());
+            int affectedRecordCount = preparedStatement.executeUpdate();
+            System.out.println(affectedRecordCount);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void delete(Person... people) {
+        for (Person person : people) {
+            delete(person);
+        }
+
     }
 }

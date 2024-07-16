@@ -72,4 +72,46 @@ public class PeopleRepositoryTests {
 
         assertThat(foundPerson).isEmpty();
     }
+
+    @Test
+    public void canGetCount() {
+        long startCount = peopleRepository.count();
+        peopleRepository.save(new Person(
+                "John", "Smith", ZonedDateTime.of(
+                1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6"))
+        ));
+        peopleRepository.save(new Person(
+                "Bobby", "Smith", ZonedDateTime.of(
+                1982, 9, 13, 15, 15, 0, 0, ZoneId.of("-8"))
+        ));
+        long endCount = peopleRepository.count();
+
+        assertThat(endCount).isEqualTo(startCount + 2);
+    }
+
+    @Test
+    public void canDelete() {
+        Person savedPerson = peopleRepository.save(new Person(
+                "John", "Smith", ZonedDateTime.of(
+                1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6")))
+        );
+        long startCount = peopleRepository.count();
+        peopleRepository.delete(savedPerson);
+        long endCount = peopleRepository.count();
+
+        assertThat(endCount).isEqualTo(startCount - 1);
+    }
+
+    @Test
+    public void canDeleteMultiplePeople() {
+        Person person1 = peopleRepository.save(new Person(
+                "John", "Smith", ZonedDateTime.of(
+                1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6"))
+        ));
+        Person person2 = peopleRepository.save(new Person(
+                "Bobby", "Smith", ZonedDateTime.of(
+                1982, 9, 13, 15, 15, 0, 0, ZoneId.of("-8"))
+        ));
+        peopleRepository.delete(person1, person2);
+    }
 }
