@@ -10,6 +10,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -60,8 +61,15 @@ public class PeopleRepositoryTests {
     @Test
     public void canFindPersonById() {
         Person savedPerson = peopleRepository.save(new Person("test", "jackson", ZonedDateTime.now()));
-        Person foundPerson = peopleRepository.findById(savedPerson.getId());
+        Person foundPerson = peopleRepository.findById(savedPerson.getId()).get();
 
         assertThat(foundPerson).isEqualTo(savedPerson);
+    }
+
+    @Test
+    public void testPersonIdNotFound() {
+        Optional<Person> foundPerson = peopleRepository.findById(-1L);
+
+        assertThat(foundPerson).isEmpty();
     }
 }

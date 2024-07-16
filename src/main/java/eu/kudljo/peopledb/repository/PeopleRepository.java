@@ -6,10 +6,11 @@ import eu.kudljo.peopledb.model.Person;
 import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Optional;
 
 public class PeopleRepository {
     public static final String SAVE_PERSON_SQL = "INSERT INTO PEOPLE (FIRST_NAME, LAST_NAME, DOB) VALUES (?, ?, ?)";
-    private static final String FIND_PERSON_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB FROM PEOPLE WHERE ID = ?";
+    private static final String FIND_PERSON_BY_ID_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB FROM PEOPLE WHERE ID = ?";
     private final Connection connection;
 
     public PeopleRepository(Connection connection) {
@@ -39,11 +40,11 @@ public class PeopleRepository {
         return person;
     }
 
-    public Person findById(Long id) {
+    public Optional<Person> findById(Long id) {
         Person person = null;
 
         try {
-            PreparedStatement preparedStatement = connection.prepareStatement(FIND_PERSON_SQL);
+            PreparedStatement preparedStatement = connection.prepareStatement(FIND_PERSON_BY_ID_SQL);
             preparedStatement.setLong(1, id);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
@@ -58,6 +59,6 @@ public class PeopleRepository {
             e.printStackTrace();
         }
 
-        return person;
+        return Optional.ofNullable(person);
     }
 }
