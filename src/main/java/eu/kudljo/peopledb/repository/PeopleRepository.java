@@ -6,7 +6,10 @@ import eu.kudljo.peopledb.model.Person;
 import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.Optional;
+
+import static java.util.stream.Collectors.joining;
 
 public class PeopleRepository {
     public static final String SAVE_PERSON_SQL = "INSERT INTO PEOPLE (FIRST_NAME, LAST_NAME, DOB) VALUES (?, ?, ?)";
@@ -14,6 +17,7 @@ public class PeopleRepository {
     private static final String COUNT_PEOPLE_SQL = "SELECT COUNT(*) AS COUNT FROM PEOPLE";
     private static final String DELETE_PERSON_BY_ID_SQL = "DELETE FROM PEOPLE WHERE ID = ?";
     private final Connection connection;
+    private final String DELETE_PEOPLE_BY_ID_SQL = "DELETE FROM PEOPLE WHERE ID IN (:ids)";
 
     public PeopleRepository(Connection connection) {
         this.connection = connection;
@@ -91,8 +95,16 @@ public class PeopleRepository {
     }
 
     public void delete(Person... people) {
-        for (Person person : people) {
-            delete(person);
+        try {
+            Statement statement = connection.createStatement();
+            String ids = Arrays.stream(people)
+                    .map(Person::getId)
+                    .map(String::valueOf)
+                    .collect(joining(", "));
+            int affectedRecordCount = statement.executeUpdate(DELETE_PEOPLE_BY_ID_SQL.replace(":ids", ids));
+            System.out.println(affectedRecordCount);
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
 
     }
