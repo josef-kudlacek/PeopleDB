@@ -1,5 +1,6 @@
 package eu.kudljo.peopledb.repository;
 
+import eu.kudljo.peopledb.annotation.SQL;
 import eu.kudljo.peopledb.model.Entity;
 
 import java.sql.*;
@@ -7,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static java.util.stream.Collectors.joining;
 
@@ -19,7 +21,7 @@ abstract class CRUDRepository<T extends Entity> {
 
     public T save(T entity) {
         try {
-            PreparedStatement preparedStatement = connection.prepareStatement(getSaveSql(), PreparedStatement.RETURN_GENERATED_KEYS);
+            PreparedStatement preparedStatement = connection.prepareStatement(getSQLByAnnotation("mapForSave", this::getSaveSql), PreparedStatement.RETURN_GENERATED_KEYS);
             mapForSave(entity, preparedStatement);
             int recordsAffected = preparedStatement.executeUpdate();
             ResultSet resultSet = preparedStatement.getGeneratedKeys();
@@ -111,7 +113,9 @@ abstract class CRUDRepository<T extends Entity> {
 
     public void update(T entity) {
         try {
-            PreparedStatement preparedStatement = connection.prepareStatement(GetUpdateSql());
+            PreparedStatement preparedStatement = connection.prepareStatement(
+                    getSQLByAnnotation("mapForUpdate", this::GetUpdateSql)
+            );
             mapForUpdate(entity, preparedStatement);
             preparedStatement.executeUpdate();
         } catch (SQLException e) {
@@ -119,7 +123,9 @@ abstract class CRUDRepository<T extends Entity> {
         }
     }
 
-    protected abstract String GetUpdateSql();
+    protected String GetUpdateSql() {
+        return "";
+    }
 
     /**
      *
@@ -139,7 +145,9 @@ abstract class CRUDRepository<T extends Entity> {
 
     abstract void mapForUpdate(T entity, PreparedStatement preparedStatement) throws SQLException;
 
-    abstract String getSaveSql();
+    protected String getSaveSql() {
+        return "";
+    }
 
     /**
      *
@@ -149,4 +157,13 @@ abstract class CRUDRepository<T extends Entity> {
     protected abstract String getFindByIdSql();
 
     abstract T extractEntityFromResultSet(ResultSet resultSet) throws SQLException;
+
+    private String getSQLByAnnotation(String methodName, Supplier<String> sqlGetter) {
+        return Arrays.stream(this.getClass().getDeclaredMethods())
+                .filter(method -> methodName.contentEquals(method.getName()))
+                .map(method -> method.getAnnotation(SQL.class))
+                .map(SQL::value)
+                .findFirst()
+                .orElseGet(sqlGetter);
+    }
 }

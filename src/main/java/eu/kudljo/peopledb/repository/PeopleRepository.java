@@ -1,5 +1,6 @@
 package eu.kudljo.peopledb.repository;
 
+import eu.kudljo.peopledb.annotation.SQL;
 import eu.kudljo.peopledb.model.Person;
 
 import java.math.BigDecimal;
@@ -21,6 +22,7 @@ public class PeopleRepository extends CRUDRepository<Person> {
     }
 
     @Override
+    @SQL(SAVE_PERSON_SQL)
     void mapForSave(Person person, PreparedStatement preparedStatement) throws SQLException {
         preparedStatement.setString(1, person.getFirstName());
         preparedStatement.setString(2, person.getLastName());
@@ -28,6 +30,7 @@ public class PeopleRepository extends CRUDRepository<Person> {
     }
 
     @Override
+    @SQL(UPDATE_PERSON_BY_ID_SQL)
     void mapForUpdate(Person person, PreparedStatement preparedStatement) throws SQLException {
         preparedStatement.setString(1, person.getFirstName());
         preparedStatement.setString(2, person.getLastName());
@@ -44,11 +47,6 @@ public class PeopleRepository extends CRUDRepository<Person> {
         ZonedDateTime dob = ZonedDateTime.of(resultSet.getTimestamp("DOB").toLocalDateTime(), ZoneId.of("+0"));
         BigDecimal salary = resultSet.getBigDecimal("SALARY");
         return new Person(personId, firstName, lastName, dob, salary);
-    }
-
-    @Override
-    protected String getSaveSql() {
-        return SAVE_PERSON_SQL;
     }
 
     @Override
@@ -74,11 +72,6 @@ public class PeopleRepository extends CRUDRepository<Person> {
     @Override
     protected String getDeleteInSql() {
         return DELETE_PEOPLE_BY_ID_SQL;
-    }
-
-    @Override
-    protected String GetUpdateSql() {
-        return UPDATE_PERSON_BY_ID_SQL;
     }
 
     private static Timestamp convertDobToTimestamp(ZonedDateTime dob) {
