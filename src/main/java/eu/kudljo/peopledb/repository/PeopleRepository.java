@@ -4,12 +4,12 @@ import eu.kudljo.peopledb.annotation.SQL;
 import eu.kudljo.peopledb.model.Address;
 import eu.kudljo.peopledb.model.CrudOperation;
 import eu.kudljo.peopledb.model.Person;
+import eu.kudljo.peopledb.model.Region;
 
 import java.math.BigDecimal;
 import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.Optional;
 
 public class PeopleRepository extends CRUDRepository<Person> {
     private AddressRepository addressRepository = null;
@@ -19,9 +19,12 @@ public class PeopleRepository extends CRUDRepository<Person> {
             VALUES (?, ?, ?, ?, ?, ?)
             """;
     private static final String FIND_PERSON_BY_ID_SQL = """
-            SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY, HOME_ADDRESS
-            FROM PEOPLE
-            WHERE ID = ?
+            SELECT
+            P.ID, P.FIRST_NAME, P.LAST_NAME, P.DOB, P.SALARY, P.HOME_ADDRESS,
+            A.ID, A.STREET_ADDRESS, A.ADDRESS2, A.CITY, A.STATE, A.POSTCODE, A.COUNTY, A.REGION, A.COUNTRY
+            FROM PEOPLE AS P
+            LEFT OUTER JOIN ADDRESSES AS A ON P.HOME_ADDRESS = A.ID
+            WHERE P.ID = ?
             """;
     private static final String FIND_ALL_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY, HOME_ADDRESS FROM PEOPLE";
     private static final String COUNT_PEOPLE_SQL = "SELECT COUNT(*) AS COUNT FROM PEOPLE";
@@ -74,10 +77,22 @@ public class PeopleRepository extends CRUDRepository<Person> {
         ZonedDateTime dob = ZonedDateTime.of(resultSet.getTimestamp("DOB").toLocalDateTime(), ZoneId.of("+0"));
         BigDecimal salary = resultSet.getBigDecimal("SALARY");
         Person person = new Person(personId, firstName, lastName, dob, salary);
-        long homeAddressId = resultSet.getLong("HOME_ADDRESS");
-        Optional<Address> homeAddress = addressRepository.findById(homeAddressId);
-        person.setHomeAddress(homeAddress.orElse(null));
+        Address address = extractAddress(resultSet);
+        person.setHomeAddress(address);
         return person;
+    }
+
+    private Address extractAddress(ResultSet resultSet) throws SQLException {
+        long addressId = resultSet.getLong("ID");
+        String streetAddress = resultSet.getString("STREET_ADDRESS");
+        String address2 = resultSet.getString("ADDRESS2");
+        String city = resultSet.getString("CITY");
+        String state = resultSet.getString("STATE");
+        String postcode = resultSet.getString("POSTCODE");
+        String county = resultSet.getString("COUNTY");
+        Region region = Region.valueOf(resultSet.getString("REGION").toUpperCase());
+        String country = resultSet.getString("COUNTRY");
+        return new Address(addressId, streetAddress, address2, city, state, postcode, country, county, region);
     }
 
     private static Timestamp convertDobToTimestamp(ZonedDateTime dob) {
