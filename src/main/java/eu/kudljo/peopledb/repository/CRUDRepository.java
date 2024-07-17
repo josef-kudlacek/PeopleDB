@@ -1,6 +1,8 @@
 package eu.kudljo.peopledb.repository;
 
+import eu.kudljo.peopledb.annotation.MultiSQL;
 import eu.kudljo.peopledb.annotation.SQL;
+import eu.kudljo.peopledb.model.CrudOperation;
 import eu.kudljo.peopledb.model.Entity;
 
 import java.sql.*;
@@ -9,6 +11,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.joining;
 
@@ -21,7 +24,7 @@ abstract class CRUDRepository<T extends Entity> {
 
     public T save(T entity) {
         try {
-            PreparedStatement preparedStatement = connection.prepareStatement(getSQLByAnnotation("mapForSave", this::getSaveSql), PreparedStatement.RETURN_GENERATED_KEYS);
+            PreparedStatement preparedStatement = connection.prepareStatement(getSQLByAnnotation(CrudOperation.SAVE, this::getSaveSql), PreparedStatement.RETURN_GENERATED_KEYS);
             mapForSave(entity, preparedStatement);
             int recordsAffected = preparedStatement.executeUpdate();
             ResultSet resultSet = preparedStatement.getGeneratedKeys();
@@ -41,7 +44,7 @@ abstract class CRUDRepository<T extends Entity> {
         T entity = null;
 
         try {
-            PreparedStatement preparedStatement = connection.prepareStatement(getFindByIdSql());
+            PreparedStatement preparedStatement = connection.prepareStatement(getSQLByAnnotation(CrudOperation.FIND_BY_ID, this::getFindByIdSql));
             preparedStatement.setLong(1, id);
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
@@ -58,7 +61,7 @@ abstract class CRUDRepository<T extends Entity> {
         List<T> entities = new ArrayList<>();
 
         try {
-            PreparedStatement preparedStatement = connection.prepareStatement(getFindAllSql());
+            PreparedStatement preparedStatement = connection.prepareStatement(getSQLByAnnotation(CrudOperation.FIND_ALL, this::getFindAllSql));
             ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 entities.add(extractEntityFromResultSet(resultSet));
@@ -73,7 +76,7 @@ abstract class CRUDRepository<T extends Entity> {
     public long count() {
         long count = 0;
         try {
-            PreparedStatement preparedStatement = connection.prepareStatement(getCountSql());
+            PreparedStatement preparedStatement = connection.prepareStatement(getSQLByAnnotation(CrudOperation.COUNT, this::getCountSql));
             ResultSet resultSet = preparedStatement.executeQuery();
             if (resultSet.next()) {
                 count = resultSet.getLong("COUNT");
@@ -87,7 +90,7 @@ abstract class CRUDRepository<T extends Entity> {
 
     public void delete(T entity) {
         try {
-            PreparedStatement preparedStatement = connection.prepareStatement(getDeleteSql());
+            PreparedStatement preparedStatement = connection.prepareStatement(getSQLByAnnotation(CrudOperation.DELETE_BY_ID, this::getDeleteSql));
             preparedStatement.setLong(1, entity.getId());
             int affectedRecordCount = preparedStatement.executeUpdate();
             System.out.println(affectedRecordCount);
@@ -103,7 +106,7 @@ abstract class CRUDRepository<T extends Entity> {
                     .map(T::getId)
                     .map(String::valueOf)
                     .collect(joining(", "));
-            int affectedRecordCount = statement.executeUpdate(getDeleteInSql().replace(":ids", ids));
+            int affectedRecordCount = statement.executeUpdate(getSQLByAnnotation(CrudOperation.DELETE_BY_IDS, this::getDeleteInSql).replace(":ids", ids));
             System.out.println(affectedRecordCount);
         } catch (SQLException e) {
             e.printStackTrace();
@@ -114,7 +117,7 @@ abstract class CRUDRepository<T extends Entity> {
     public void update(T entity) {
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(
-                    getSQLByAnnotation("mapForUpdate", this::GetUpdateSql)
+                    getSQLByAnnotation(CrudOperation.UPDATE, this::GetUpdateSql)
             );
             mapForUpdate(entity, preparedStatement);
             preparedStatement.executeUpdate();
@@ -124,7 +127,7 @@ abstract class CRUDRepository<T extends Entity> {
     }
 
     protected String GetUpdateSql() {
-        return "";
+        throw new RuntimeException("SQL not defined");
     }
 
     /**
@@ -133,20 +136,24 @@ abstract class CRUDRepository<T extends Entity> {
      * "DELETE FROM PEOPLE WHERE ID IN (:ids)"
      * Be sure to include the '(:ids)' named parameter & call it 'ids'
      */
-    protected abstract String getDeleteInSql();
+    protected String getDeleteInSql() {
+        throw new RuntimeException("SQL not defined");
+    }
 
-    protected abstract String getDeleteSql();
+    protected String getDeleteSql() {
+        throw new RuntimeException("SQL not defined");
+    }
 
-    protected abstract String getCountSql();
+    protected String getCountSql() {
+        throw new RuntimeException("SQL not defined");
+    }
 
-    protected abstract String getFindAllSql();
-
-    abstract void mapForSave(T entity, PreparedStatement preparedStatement) throws SQLException;
-
-    abstract void mapForUpdate(T entity, PreparedStatement preparedStatement) throws SQLException;
+    protected String getFindAllSql() {
+        throw new RuntimeException("SQL not defined");
+    }
 
     protected String getSaveSql() {
-        return "";
+        throw new RuntimeException("SQL not defined");
     }
 
     /**
@@ -154,14 +161,28 @@ abstract class CRUDRepository<T extends Entity> {
      * @return Returns String that represents the SQL needed to retrieve one entity.
      * The SQL must contain one SQL parameter, i.e. "?", that will bind to the entity's ID.
      */
-    protected abstract String getFindByIdSql();
+    protected String getFindByIdSql() {
+        throw new RuntimeException("SQL not defined");
+    }
+
+    abstract void mapForSave(T entity, PreparedStatement preparedStatement) throws SQLException;
+
+    abstract void mapForUpdate(T entity, PreparedStatement preparedStatement) throws SQLException;
 
     abstract T extractEntityFromResultSet(ResultSet resultSet) throws SQLException;
 
-    private String getSQLByAnnotation(String methodName, Supplier<String> sqlGetter) {
-        return Arrays.stream(this.getClass().getDeclaredMethods())
-                .filter(method -> methodName.contentEquals(method.getName()))
-                .map(method -> method.getAnnotation(SQL.class))
+    private String getSQLByAnnotation(CrudOperation operationType, Supplier<String> sqlGetter) {
+        Stream<SQL> multiSqlStream = Arrays.stream(this.getClass().getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(MultiSQL.class))
+                .map(method -> method.getAnnotation(MultiSQL.class))
+                .flatMap(multiSQL -> Arrays.stream(multiSQL.value()));
+
+        Stream<SQL> sqlStream = Arrays.stream(this.getClass().getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(SQL.class))
+                .map(method -> method.getAnnotation(SQL.class));
+
+        return Stream.concat(multiSqlStream, sqlStream)
+                .filter(annotation -> annotation.operationType().equals(operationType))
                 .map(SQL::value)
                 .findFirst()
                 .orElseGet(sqlGetter);
