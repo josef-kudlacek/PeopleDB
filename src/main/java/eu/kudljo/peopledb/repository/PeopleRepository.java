@@ -10,7 +10,11 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
 public class PeopleRepository extends CRUDRepository<Person> {
-    public static final String SAVE_PERSON_SQL = "INSERT INTO PEOPLE (FIRST_NAME, LAST_NAME, DOB) VALUES (?, ?, ?)";
+    public static final String SAVE_PERSON_SQL = """
+            INSERT INTO PEOPLE
+            (FIRST_NAME, LAST_NAME, DOB, SALARY, EMAIL)
+            VALUES (?, ?, ?, ?, ?)
+            """;
     private static final String FIND_PERSON_BY_ID_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY FROM PEOPLE WHERE ID = ?";
     private static final String FIND_ALL_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY FROM PEOPLE";
     private static final String COUNT_PEOPLE_SQL = "SELECT COUNT(*) AS COUNT FROM PEOPLE";
@@ -28,6 +32,8 @@ public class PeopleRepository extends CRUDRepository<Person> {
         preparedStatement.setString(1, person.getFirstName());
         preparedStatement.setString(2, person.getLastName());
         preparedStatement.setTimestamp(3, convertDobToTimestamp(person.getDob()));
+        preparedStatement.setBigDecimal(4, person.getSalary());
+        preparedStatement.setString(5, person.getEmail());
     }
 
     @Override

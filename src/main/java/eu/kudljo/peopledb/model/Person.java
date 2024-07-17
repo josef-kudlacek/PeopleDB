@@ -17,6 +17,7 @@ public class Person {
     private String lastName;
     private ZonedDateTime dob;
     private BigDecimal salary = new BigDecimal("0");
+    private String email;
 
     public Person(long personId, String firstName, String lastName, ZonedDateTime dob, BigDecimal salary) {
         this(personId, firstName, lastName, dob);
@@ -74,14 +75,21 @@ public class Person {
         this.salary = salary;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     @Override
     public String toString() {
-        String sb = "Person{" + "id=" + id +
+        return "Person{" + "id=" + id +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", dob=" + dob +
                 '}';
-        return sb;
     }
 
     @Override
