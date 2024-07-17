@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Optional;
 
 public class PeopleRepository extends CRUDRepository<Person> {
     private AddressRepository addressRepository = null;
@@ -17,8 +18,12 @@ public class PeopleRepository extends CRUDRepository<Person> {
             (FIRST_NAME, LAST_NAME, DOB, SALARY, EMAIL, HOME_ADDRESS)
             VALUES (?, ?, ?, ?, ?, ?)
             """;
-    private static final String FIND_PERSON_BY_ID_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY FROM PEOPLE WHERE ID = ?";
-    private static final String FIND_ALL_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY FROM PEOPLE";
+    private static final String FIND_PERSON_BY_ID_SQL = """
+            SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY, HOME_ADDRESS
+            FROM PEOPLE
+            WHERE ID = ?
+            """;
+    private static final String FIND_ALL_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY, HOME_ADDRESS FROM PEOPLE";
     private static final String COUNT_PEOPLE_SQL = "SELECT COUNT(*) AS COUNT FROM PEOPLE";
     private static final String DELETE_PERSON_BY_ID_SQL = "DELETE FROM PEOPLE WHERE ID = ?";
     private static final String DELETE_PEOPLE_BY_IDS_SQL = "DELETE FROM PEOPLE WHERE ID IN (:ids)";
@@ -68,7 +73,11 @@ public class PeopleRepository extends CRUDRepository<Person> {
         String lastName = resultSet.getString("LAST_NAME");
         ZonedDateTime dob = ZonedDateTime.of(resultSet.getTimestamp("DOB").toLocalDateTime(), ZoneId.of("+0"));
         BigDecimal salary = resultSet.getBigDecimal("SALARY");
-        return new Person(personId, firstName, lastName, dob, salary);
+        Person person = new Person(personId, firstName, lastName, dob, salary);
+        long homeAddressId = resultSet.getLong("HOME_ADDRESS");
+        Optional<Address> homeAddress = addressRepository.findById(homeAddressId);
+        person.setHomeAddress(homeAddress.orElse(null));
+        return person;
     }
 
     private static Timestamp convertDobToTimestamp(ZonedDateTime dob) {
