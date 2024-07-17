@@ -1,9 +1,9 @@
 package eu.kudljo.peopledb.repository;
 
+import eu.kudljo.peopledb.annotation.Id;
 import eu.kudljo.peopledb.annotation.MultiSQL;
 import eu.kudljo.peopledb.annotation.SQL;
 import eu.kudljo.peopledb.model.CrudOperation;
-import eu.kudljo.peopledb.model.Entity;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -15,7 +15,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.joining;
 
-abstract class CRUDRepository<T extends Entity> {
+abstract class CRUDRepository<T> {
     protected Connection connection;
 
     public CRUDRepository(Connection connection) {
@@ -30,7 +30,7 @@ abstract class CRUDRepository<T extends Entity> {
             ResultSet resultSet = preparedStatement.getGeneratedKeys();
             while (resultSet.next()) {
                 long id = resultSet.getLong(1);
-                entity.setId(id);
+                setIdByAnnotation(id, entity);
                 System.out.println(entity);
             }
             System.out.printf("Records affected: %d%n", recordsAffected);
@@ -91,7 +91,7 @@ abstract class CRUDRepository<T extends Entity> {
     public void delete(T entity) {
         try {
             PreparedStatement preparedStatement = connection.prepareStatement(getSQLByAnnotation(CrudOperation.DELETE_BY_ID, this::getDeleteSql));
-            preparedStatement.setLong(1, entity.getId());
+            preparedStatement.setLong(1, getIdByAnnotation(entity));
             int affectedRecordCount = preparedStatement.executeUpdate();
             System.out.println(affectedRecordCount);
         } catch (SQLException e) {
@@ -103,7 +103,7 @@ abstract class CRUDRepository<T extends Entity> {
         try {
             Statement statement = connection.createStatement();
             String ids = Arrays.stream(entities)
-                    .map(T::getId)
+                    .map(this::getIdByAnnotation)
                     .map(String::valueOf)
                     .collect(joining(", "));
             int affectedRecordCount = statement.executeUpdate(getSQLByAnnotation(CrudOperation.DELETE_BY_IDS, this::getDeleteInSql).replace(":ids", ids));
@@ -186,5 +186,35 @@ abstract class CRUDRepository<T extends Entity> {
                 .map(SQL::value)
                 .findFirst()
                 .orElseGet(sqlGetter);
+    }
+
+    private void setIdByAnnotation(Long id, T entity) {
+        Arrays.stream(entity.getClass().getDeclaredFields())
+                .filter(field -> field.isAnnotationPresent(Id.class))
+                .forEach(field -> {
+                    field.setAccessible(true);
+                    try {
+                        field.set(entity, id);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException("Unable to set value to field 'Id'");
+                    }
+                });
+    }
+
+    private Long getIdByAnnotation(T entity) {
+        return Arrays.stream(entity.getClass().getDeclaredFields())
+                .filter(field -> field.isAnnotationPresent(Id.class))
+                .mapToLong(field -> {
+                    field.setAccessible(true);
+                    Long id = null;
+                    try {
+                        id = (long) field.get(entity);
+                    } catch (IllegalAccessException e) {
+                        e.printStackTrace();
+                    }
+                    return id;
+                })
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Field with annotation 'Id' was not found"));
     }
 }
