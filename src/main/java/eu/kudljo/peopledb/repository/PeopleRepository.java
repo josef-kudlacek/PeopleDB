@@ -10,20 +10,27 @@ import java.math.BigDecimal;
 import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Optional;
 
 public class PeopleRepository extends CRUDRepository<Person> {
-    private AddressRepository addressRepository = null;
+    private AddressRepository addressRepository;
     public static final String SAVE_PERSON_SQL = """
             INSERT INTO PEOPLE
-            (FIRST_NAME, LAST_NAME, DOB, SALARY, EMAIL, HOME_ADDRESS)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (FIRST_NAME, LAST_NAME, DOB, SALARY, EMAIL, HOME_ADDRESS, BUSINESS_ADDRESS)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """;
     private static final String FIND_PERSON_BY_ID_SQL = """
             SELECT
-            P.ID, P.FIRST_NAME, P.LAST_NAME, P.DOB, P.SALARY, P.HOME_ADDRESS,
-            A.ID AS A_ID, A.STREET_ADDRESS, A.ADDRESS2, A.CITY, A.STATE, A.POSTCODE, A.COUNTY, A.REGION, A.COUNTRY
+            P.ID, P.FIRST_NAME, P.LAST_NAME, P.DOB, P.SALARY, P.HOME_ADDRESS, P.BUSINESS_ADDRESS,
+            HOME.ID AS HOME_ID, HOME.STREET_ADDRESS AS HOME_STREET_ADDRESS, HOME.ADDRESS2 AS HOME_ADDRESS2, HOME.CITY AS HOME_CITY,
+            HOME.STATE AS HOME_STATE, HOME.POSTCODE AS HOME_POSTCODE, HOME.COUNTY AS HOME_COUNTY, HOME.REGION AS HOME_REGION,
+            HOME.COUNTRY AS HOME_COUNTRY,
+            BIZ.ID AS BIZ_ID, BIZ.STREET_ADDRESS AS BIZ_STREET_ADDRESS, BIZ.ADDRESS2 AS BIZ_ADDRESS2, BIZ.CITY AS BIZ_CITY,
+            BIZ.STATE AS BIZ_STATE, BIZ.POSTCODE AS BIZ_POSTCODE, BIZ.COUNTY AS BIZ_COUNTY, BIZ.REGION AS BIZ_REGION,
+            BIZ.COUNTRY AS BIZ_COUNTRY,
             FROM PEOPLE AS P
-            LEFT OUTER JOIN ADDRESSES AS A ON P.HOME_ADDRESS = A.ID
+            LEFT OUTER JOIN ADDRESSES AS HOME ON P.HOME_ADDRESS = HOME.ID
+            LEFT OUTER JOIN ADDRESSES AS BIZ ON P.BUSINESS_ADDRESS = BIZ.ID
             WHERE P.ID = ?
             """;
     private static final String FIND_ALL_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY, HOME_ADDRESS FROM PEOPLE";
@@ -40,18 +47,13 @@ public class PeopleRepository extends CRUDRepository<Person> {
     @Override
     @SQL(value = SAVE_PERSON_SQL, operationType = CrudOperation.SAVE)
     void mapForSave(Person person, PreparedStatement preparedStatement) throws SQLException {
-        Address savedAddress = null;
         preparedStatement.setString(1, person.getFirstName());
         preparedStatement.setString(2, person.getLastName());
         preparedStatement.setTimestamp(3, convertDobToTimestamp(person.getDob()));
         preparedStatement.setBigDecimal(4, person.getSalary());
         preparedStatement.setString(5, person.getEmail());
-        if (person.getHomeAddress().isPresent()) {
-            savedAddress = addressRepository.save(person.getHomeAddress().get());
-            preparedStatement.setLong(6, savedAddress.id());
-        } else {
-            preparedStatement.setObject(6, null);
-        }
+        associateAddressWithPerson(preparedStatement, person.getHomeAddress(), 6);
+        associateAddressWithPerson(preparedStatement, person.getBusinessAddress(), 7);
     }
 
     @Override
@@ -77,24 +79,26 @@ public class PeopleRepository extends CRUDRepository<Person> {
         ZonedDateTime dob = ZonedDateTime.of(resultSet.getTimestamp("DOB").toLocalDateTime(), ZoneId.of("+0"));
         BigDecimal salary = resultSet.getBigDecimal("SALARY");
         Person person = new Person(personId, firstName, lastName, dob, salary);
-        Address address = extractAddress(resultSet);
-        person.setHomeAddress(address);
+        Address homeAddress = extractAddress(resultSet, "HOME_");
+        person.setHomeAddress(homeAddress);
+        Address businessAddress = extractAddress(resultSet, "BIZ_");
+        person.setBusinessAddress(businessAddress);
         return person;
     }
 
-    private Address extractAddress(ResultSet resultSet) throws SQLException {
-        Long addressId = getValueByAlias("A_ID", resultSet, Long.class);
+    private Address extractAddress(ResultSet resultSet, String aliasPrefix) throws SQLException {
+        Long addressId = getValueByAlias(aliasPrefix + "ID", resultSet, Long.class);
         if (addressId == null) {
             return null;
         }
-        String streetAddress = resultSet.getString("STREET_ADDRESS");
-        String address2 = resultSet.getString("ADDRESS2");
-        String city = resultSet.getString("CITY");
-        String state = resultSet.getString("STATE");
-        String postcode = resultSet.getString("POSTCODE");
-        String county = resultSet.getString("COUNTY");
-        Region region = Region.valueOf(resultSet.getString("REGION").toUpperCase());
-        String country = resultSet.getString("COUNTRY");
+        String streetAddress = getValueByAlias(aliasPrefix + "STREET_ADDRESS", resultSet, String.class);
+        String address2 = getValueByAlias(aliasPrefix + "ADDRESS2", resultSet, String.class);
+        String city = getValueByAlias(aliasPrefix + "CITY", resultSet, String.class);
+        String state = getValueByAlias(aliasPrefix + "STATE", resultSet, String.class);
+        String postcode = getValueByAlias(aliasPrefix + "POSTCODE", resultSet, String.class);
+        String county = getValueByAlias(aliasPrefix + "COUNTY", resultSet, String.class);
+        Region region = Region.valueOf(getValueByAlias(aliasPrefix + "REGION", resultSet, String.class).toUpperCase());
+        String country = getValueByAlias(aliasPrefix + "COUNTRY", resultSet, String.class);
         return new Address(addressId, streetAddress, address2, city, state, postcode, country, county, region);
     }
 
@@ -111,5 +115,15 @@ public class PeopleRepository extends CRUDRepository<Person> {
 
     private static Timestamp convertDobToTimestamp(ZonedDateTime dob) {
         return Timestamp.valueOf(dob.withZoneSameInstant(ZoneId.of("+0")).toLocalDateTime());
+    }
+
+    private void associateAddressWithPerson(PreparedStatement preparedStatement, Optional<Address> address, int parameterIndex) throws SQLException {
+        Address savedAddress;
+        if (address.isPresent()) {
+            savedAddress = addressRepository.save(address.get());
+            preparedStatement.setLong(parameterIndex, savedAddress.id());
+        } else {
+            preparedStatement.setObject(parameterIndex, null);
+        }
     }
 }

@@ -68,7 +68,7 @@ public class PeopleRepositoryTests {
     }
 
     @Test
-    public void canSavePersonWithAddress() throws SQLException {
+    public void canSavePersonWithHomeAddress() {
         Person john = new Person("JohnZZZ", "Smith", ZonedDateTime.of(
                 1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6"))
         );
@@ -81,6 +81,19 @@ public class PeopleRepositoryTests {
     }
 
     @Test
+    public void canSavePersonWithBussAddress() {
+        Person john = new Person("JohnZZZ", "Smith", ZonedDateTime.of(
+                1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6"))
+        );
+        Address address = new Address(null, "123 Beale St.", "Apt. 1A", "Wala Wala",
+                "WA", "90210", "United States", "Fulton County", Region.WEST);
+        john.setBusinessAddress(address);
+
+        Person savedPerson = peopleRepository.save(john);
+        assertThat(savedPerson.getBusinessAddress().get().id()).isGreaterThan(0);
+    }
+
+    @Test
     public void canFindPersonById() {
         Person savedPerson = peopleRepository.save(new Person("test", "jackson", ZonedDateTime.now()));
         Person foundPerson = peopleRepository.findById(savedPerson.getId()).get();
@@ -89,7 +102,7 @@ public class PeopleRepositoryTests {
     }
 
     @Test
-    public void canFindPersonByIdWithAddress() throws SQLException {
+    public void canFindPersonByIdWithHomeAddress() {
         Person john = new Person("JohnZZZ", "Smith", ZonedDateTime.of(
                 1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6"))
         );
@@ -101,6 +114,21 @@ public class PeopleRepositoryTests {
         Person foundPerson = peopleRepository.findById(savedPerson.getId()).get();
 
         assertThat(foundPerson.getHomeAddress().get().state()).isEqualTo("WA");
+    }
+
+    @Test
+    public void canFindPersonByIdWithBusinessAddress() {
+        Person john = new Person("JohnZZZ", "Smith", ZonedDateTime.of(
+                1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6"))
+        );
+        Address address = new Address(null, "123 Beale St.", "Apt. 1A", "Wala Wala",
+                "WA", "90210", "United States", "Fulton County", Region.WEST);
+        john.setBusinessAddress(address);
+
+        Person savedPerson = peopleRepository.save(john);
+        Person foundPerson = peopleRepository.findById(savedPerson.getId()).get();
+
+        assertThat(foundPerson.getBusinessAddress().get().state()).isEqualTo("WA");
     }
 
     @Test
