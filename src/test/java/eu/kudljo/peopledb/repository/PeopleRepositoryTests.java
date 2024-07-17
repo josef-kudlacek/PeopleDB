@@ -1,8 +1,11 @@
 package eu.kudljo.peopledb.repository;
 
+import eu.kudljo.peopledb.model.Address;
 import eu.kudljo.peopledb.model.Person;
+import eu.kudljo.peopledb.model.Region;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -62,6 +65,19 @@ public class PeopleRepositoryTests {
         Person savedPerson2 = peopleRepository.save(bobby);
 
         assertThat(savedPerson1.getId()).isNotEqualTo(savedPerson2.getId());
+    }
+
+    @Test
+    public void canSavePersonWithAddress() throws SQLException {
+        Person john = new Person("JohnZZZ", "Smith", ZonedDateTime.of(
+                1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6"))
+        );
+        Address address = new Address(null, "123 Beale St.", "Apt. 1A", "Wala Wala",
+                "WA", "90210", "United States", "Fulton County", Region.WEST);
+        john.setHomeAddress(address);
+
+        Person savedPerson = peopleRepository.save(john);
+        assertThat(savedPerson.getHomeAddress().id()).isGreaterThan(0);
     }
 
     @Test
@@ -183,6 +199,7 @@ public class PeopleRepositoryTests {
     }
 
     @Test
+    @Disabled
     public void loadData() throws IOException, SQLException {
         Files.lines(Path.of("C:\\Users\\josep\\IdeaProjects\\Udemy\\Files\\Hr5m.csv"))
                 .skip(1)
