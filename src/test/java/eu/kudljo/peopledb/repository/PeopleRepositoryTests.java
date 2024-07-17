@@ -31,7 +31,7 @@ public class PeopleRepositoryTests {
     @BeforeEach
     void setUp() throws SQLException {
         connection = DriverManager
-                .getConnection("jdbc:h2:C:\\squirrel-sql-4.7.1\\db\\peopletest;ALIAS_COLUMN_NAME=TRUE");
+                .getConnection("jdbc:h2:C:\\squirrel-sql-4.7.1\\db\\peopletest");
         connection.setAutoCommit(false);
         peopleRepository = new PeopleRepository(connection);
     }
