@@ -45,7 +45,7 @@ public class PeopleRepository extends CRUDRepository<Person> {
             WHERE PARENT.ID = ?
             """;
     private static final String FIND_ALL_SQL = """
-            SELECT 
+            SELECT
             PARENT.ID AS PARENT_ID, PARENT.FIRST_NAME AS PARENT_FIRST_NAME, PARENT.LAST_NAME AS PARENT_LAST_NAME,
             PARENT.DOB AS PARENT_DOB, PARENT.SALARY AS PARENT_SALARY, PARENT.EMAIL AS PARENT_EMAIL,
             FROM PEOPLE AS PARENT
