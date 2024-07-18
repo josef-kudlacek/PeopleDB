@@ -92,36 +92,39 @@ public class PeopleRepository extends CRUDRepository<Person> {
     Person extractEntityFromResultSet(ResultSet resultSet) throws SQLException {
         Person person = null;
         do {
-            Person foundPerson = extractPerson(resultSet, "PARENT_");
-            if (!foundPerson.equals(person)) {
-                Address homeAddress = extractAddress(resultSet, "HOME_");
-                foundPerson.setHomeAddress(homeAddress);
-                Address businessAddress = extractAddress(resultSet, "BIZ_");
-                foundPerson.setBusinessAddress(businessAddress);
-                Person spouse = extractPerson(resultSet, "S_");
-                foundPerson.setSpouse(spouse);
-                person = foundPerson;
+            Optional<Person> foundPersonOpt = extractPerson(resultSet, "PARENT_");
+            if (foundPersonOpt.isPresent()) {
+                Person foundPerson = foundPersonOpt.get();
+                if (!foundPerson.equals(person)) {
+                    Address homeAddress = extractAddress(resultSet, "HOME_");
+                    foundPerson.setHomeAddress(homeAddress);
+                    Address businessAddress = extractAddress(resultSet, "BIZ_");
+                    foundPerson.setBusinessAddress(businessAddress);
+                    Optional<Person> spouse = extractPerson(resultSet, "S_");
+                    spouse.ifPresent(foundPerson::setSpouse);
+                    person = foundPerson;
+                }
             }
 
-            Person child = extractPerson(resultSet, "CHILD_");
-            if (child != null) {
-                person.addChild(child);
+            Optional<Person> child = extractPerson(resultSet, "CHILD_");
+            if (child.isPresent()) {
+                person.addChild(child.get());
             }
         } while (resultSet.next());
         return person;
     }
 
-    private Person extractPerson(ResultSet resultSet, String aliasPrefix) throws SQLException {
+    private Optional<Person> extractPerson(ResultSet resultSet, String aliasPrefix) throws SQLException {
         Long personId = getValueByAlias(aliasPrefix + "ID", resultSet, Long.class);
         if (personId == null) {
-            return null;
+            return Optional.empty();
         }
         String firstName = getValueByAlias(aliasPrefix + "FIRST_NAME", resultSet, String.class);
         String lastName = getValueByAlias(aliasPrefix + "LAST_NAME", resultSet, String.class);
         ZonedDateTime dob = ZonedDateTime.of(getValueByAlias(aliasPrefix + "DOB", resultSet, Timestamp.class).toLocalDateTime(), ZoneId.of("+0"));
         BigDecimal salary = getValueByAlias(aliasPrefix + "SALARY", resultSet, BigDecimal.class);
         Person person = new Person(personId, firstName, lastName, dob, salary);
-        return person;
+        return Optional.of(person);
     }
 
     private Address extractAddress(ResultSet resultSet, String aliasPrefix) throws SQLException {
