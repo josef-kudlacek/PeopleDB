@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class PeopleRepositoryTests {
@@ -127,6 +128,7 @@ public class PeopleRepositoryTests {
         savedPerson.getChildren().stream()
                 .map(Person::getId)
                 .forEach(id -> assertThat(id).isGreaterThan(0));
+//        connection.commit();
     }
 
     @Test
@@ -181,6 +183,30 @@ public class PeopleRepositoryTests {
         Person foundPerson = peopleRepository.findById(savedPerson.getId()).get();
 
         assertThat(foundPerson.getSpouse().get().getId()).isGreaterThan(0);
+    }
+
+    @Test
+    public void canFindPersonByIdWithChildren() {
+        Person john = new Person("JohnZZZ", "Smith", ZonedDateTime.of(
+                1980, 11, 15, 15, 15, 0, 0, ZoneId.of("-6"))
+        );
+        john.addChild(new Person("Johnny", "Smith", ZonedDateTime.of(
+                2010, 1, 1, 1, 0, 0, 0, ZoneId.of("-6"))
+        ));
+        john.addChild(new Person("Sarah", "Smith", ZonedDateTime.of(
+                2012, 1, 3, 1, 0, 0, 0, ZoneId.of("-6"))
+        ));
+        john.addChild(new Person("Jenny", "Smith", ZonedDateTime.of(
+                2014, 1, 5, 1, 0, 0, 0, ZoneId.of("-6"))
+        ));
+
+        Person savedPerson = peopleRepository.save(john);
+        Person foundPerson = peopleRepository.findById(savedPerson.getId()).get();
+
+        assertThat(foundPerson.getChildren().stream()
+                .map(Person::getFirstName)
+                .collect(toSet()))
+                .contains("Johnny", "Sarah", "Jenny");
     }
 
     @Test

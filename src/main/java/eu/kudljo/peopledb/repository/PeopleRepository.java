@@ -16,26 +16,31 @@ public class PeopleRepository extends CRUDRepository<Person> {
     private AddressRepository addressRepository;
     public static final String SAVE_PERSON_SQL = """
             INSERT INTO PEOPLE
-            (FIRST_NAME, LAST_NAME, DOB, SALARY, EMAIL, HOME_ADDRESS, BUSINESS_ADDRESS, SPOUSE, PARENT)
+            (FIRST_NAME, LAST_NAME, DOB, SALARY, EMAIL, HOME_ADDRESS, BUSINESS_ADDRESS, SPOUSE, PARENT_ID)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
     private static final String FIND_PERSON_BY_ID_SQL = """
             SELECT
-            P.ID AS P_ID, P.FIRST_NAME AS P_FIRST_NAME, P.LAST_NAME AS P_LAST_NAME, P.DOB AS P_DOB, P.SALARY AS P_SALARY,
-            P.HOME_ADDRESS AS P_HOME_ADDRESS, P.BUSINESS_ADDRESS AS P_BUSINESS_ADDRESS,
+            PARENT.ID AS PARENT_ID, PARENT.FIRST_NAME AS PARENT_FIRST_NAME, PARENT.LAST_NAME AS PARENT_LAST_NAME, PARENT.DOB AS PARENT_DOB, PARENT.SALARY AS PARENT_SALARY, PARENT.EMAIL AS PARENT_EMAIL,
+            PARENT.SPOUSE AS PARENT_SPOUSE, SPOUSE.ID AS S_ID, SPOUSE.FIRST_NAME AS S_FIRST_NAME, SPOUSE.LAST_NAME AS S_LAST_NAME, SPOUSE.DOB AS S_DOB, SPOUSE.SALARY AS S_SALARY,
+            SPOUSE.HOME_ADDRESS AS S_HOME_ADDRESS, SPOUSE.BUSINESS_ADDRESS AS S_BUSINESS_ADDRESS,
+            CHILD.ID AS CHILD_ID, CHILD.FIRST_NAME AS CHILD_FIRST_NAME, CHILD.LAST_NAME AS CHILD_LAST_NAME, CHILD.DOB AS CHILD_DOB, CHILD.SALARY AS CHILD_SALARY, CHILD.EMAIL AS CHILD_EMAIL,
             HOME.ID AS HOME_ID, HOME.STREET_ADDRESS AS HOME_STREET_ADDRESS, HOME.ADDRESS2 AS HOME_ADDRESS2, HOME.CITY AS HOME_CITY,
             HOME.STATE AS HOME_STATE, HOME.POSTCODE AS HOME_POSTCODE, HOME.COUNTY AS HOME_COUNTY, HOME.REGION AS HOME_REGION,
             HOME.COUNTRY AS HOME_COUNTRY,
             BIZ.ID AS BIZ_ID, BIZ.STREET_ADDRESS AS BIZ_STREET_ADDRESS, BIZ.ADDRESS2 AS BIZ_ADDRESS2, BIZ.CITY AS BIZ_CITY,
             BIZ.STATE AS BIZ_STATE, BIZ.POSTCODE AS BIZ_POSTCODE, BIZ.COUNTY AS BIZ_COUNTY, BIZ.REGION AS BIZ_REGION,
-            BIZ.COUNTRY AS BIZ_COUNTRY,
-            SPOUSE.ID AS S_ID, SPOUSE.FIRST_NAME AS S_FIRST_NAME, SPOUSE.LAST_NAME AS S_LAST_NAME, SPOUSE.DOB AS S_DOB, SPOUSE.SALARY AS S_SALARY,
-            SPOUSE.HOME_ADDRESS AS S_HOME_ADDRESS, SPOUSE.BUSINESS_ADDRESS AS S_BUSINESS_ADDRESS
-            FROM PEOPLE AS P
-            LEFT OUTER JOIN ADDRESSES AS HOME ON P.HOME_ADDRESS = HOME.ID
-            LEFT OUTER JOIN ADDRESSES AS BIZ ON P.BUSINESS_ADDRESS = BIZ.ID
-            LEFT OUTER JOIN PEOPLE AS SPOUSE ON P.SPOUSE = SPOUSE.ID
-            WHERE P.ID = ?
+            BIZ.COUNTRY AS BIZ_COUNTRY
+            FROM PEOPLE AS PARENT
+            LEFT OUTER JOIN PEOPLE AS CHILD
+            ON PARENT.ID = CHILD.PARENT_ID
+            LEFT OUTER JOIN ADDRESSES AS HOME
+            ON PARENT.HOME_ADDRESS = HOME.ID
+            LEFT OUTER JOIN ADDRESSES AS BIZ
+            ON PARENT.BUSINESS_ADDRESS = BIZ.ID
+            LEFT OUTER JOIN PEOPLE AS SPOUSE
+            ON PARENT.SPOUSE = SPOUSE.ID
+            WHERE PARENT.ID = ?
             """;
     private static final String FIND_ALL_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY, HOME_ADDRESS FROM PEOPLE";
     private static final String COUNT_PEOPLE_SQL = "SELECT COUNT(*) AS COUNT FROM PEOPLE";
@@ -85,13 +90,24 @@ public class PeopleRepository extends CRUDRepository<Person> {
     @SQL(value = DELETE_PERSON_BY_ID_SQL, operationType = CrudOperation.DELETE_BY_ID)
     @SQL(value = DELETE_PEOPLE_BY_IDS_SQL, operationType = CrudOperation.DELETE_BY_IDS)
     Person extractEntityFromResultSet(ResultSet resultSet) throws SQLException {
-        Person person = extractPerson(resultSet, "P_");
-        Address homeAddress = extractAddress(resultSet, "HOME_");
-        person.setHomeAddress(homeAddress);
-        Address businessAddress = extractAddress(resultSet, "BIZ_");
-        person.setBusinessAddress(businessAddress);
-        Person spouse = extractPerson(resultSet, "S_");
-        person.setSpouse(spouse);
+        Person person = null;
+        do {
+            Person foundPerson = extractPerson(resultSet, "PARENT_");
+            if (!foundPerson.equals(person)) {
+                Address homeAddress = extractAddress(resultSet, "HOME_");
+                foundPerson.setHomeAddress(homeAddress);
+                Address businessAddress = extractAddress(resultSet, "BIZ_");
+                foundPerson.setBusinessAddress(businessAddress);
+                Person spouse = extractPerson(resultSet, "S_");
+                foundPerson.setSpouse(spouse);
+                person = foundPerson;
+            }
+
+            Person child = extractPerson(resultSet, "CHILD_");
+            if (child != null) {
+                person.addChild(child);
+            }
+        } while (resultSet.next());
         return person;
     }
 
