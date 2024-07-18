@@ -6,8 +6,10 @@ import java.math.BigDecimal;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 public class Person {
 
@@ -22,7 +24,8 @@ public class Person {
     private Optional<Address> homeAddress = Optional.empty();
     private Optional<Address> businessAddress = Optional.empty();
     private Optional<Person> spouse = Optional.empty();
-
+    private Set<Person> children = new HashSet<>();
+    private Optional<Person> parent = Optional.empty();
 
     public Person(long personId, String firstName, String lastName, ZonedDateTime dob, BigDecimal salary) {
         this(personId, firstName, lastName, dob);
@@ -110,6 +113,23 @@ public class Person {
 
     public Optional<Person> getSpouse() {
         return spouse;
+    }
+
+    public void addChild(Person child) {
+        children.add(child);
+        child.setParent(this);
+    }
+
+    public Set<Person> getChildren() {
+        return children;
+    }
+
+    private void setParent(Person parent) {
+        this.parent = Optional.ofNullable(parent);
+    }
+
+    public Optional<Person> getParent() {
+        return parent;
     }
 
     @Override

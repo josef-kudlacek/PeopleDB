@@ -16,8 +16,8 @@ public class PeopleRepository extends CRUDRepository<Person> {
     private AddressRepository addressRepository;
     public static final String SAVE_PERSON_SQL = """
             INSERT INTO PEOPLE
-            (FIRST_NAME, LAST_NAME, DOB, SALARY, EMAIL, HOME_ADDRESS, BUSINESS_ADDRESS, SPOUSE)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (FIRST_NAME, LAST_NAME, DOB, SALARY, EMAIL, HOME_ADDRESS, BUSINESS_ADDRESS, SPOUSE, PARENT)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """;
     private static final String FIND_PERSON_BY_ID_SQL = """
             SELECT
@@ -59,6 +59,13 @@ public class PeopleRepository extends CRUDRepository<Person> {
         associateAddressWithPerson(preparedStatement, person.getHomeAddress(), 6);
         associateAddressWithPerson(preparedStatement, person.getBusinessAddress(), 7);
         associatePersonWithPerson(preparedStatement, person.getSpouse(), 8);
+        associateChildWithPerson(preparedStatement, person.getParent(), 9);
+    }
+
+    @Override
+    protected void postSave(Person entity, long id) {
+        entity.getChildren().stream()
+                .forEach(this::save);
     }
 
     @Override
@@ -147,6 +154,14 @@ public class PeopleRepository extends CRUDRepository<Person> {
         if (person.isPresent()) {
             savedPerson = this.save(person.get());
             preparedStatement.setLong(parameterIndex, savedPerson.getId());
+        } else {
+            preparedStatement.setObject(parameterIndex, null);
+        }
+    }
+
+    private void associateChildWithPerson(PreparedStatement preparedStatement, Optional<Person> person, int parameterIndex) throws SQLException {
+        if (person.isPresent()) {
+            preparedStatement.setLong(parameterIndex, person.get().getId());
         } else {
             preparedStatement.setObject(parameterIndex, null);
         }

@@ -31,6 +31,7 @@ abstract class CRUDRepository<T> {
             while (resultSet.next()) {
                 long id = resultSet.getLong(1);
                 setIdByAnnotation(id, entity);
+                postSave(entity, id);
 //                System.out.println(entity);
             }
 //            System.out.printf("Records affected: %d%n", recordsAffected);
@@ -164,6 +165,8 @@ abstract class CRUDRepository<T> {
     protected String getFindByIdSql() {
         throw new RuntimeException("SQL not defined");
     }
+
+    protected void postSave(T entity, long id) { }
 
     abstract void mapForSave(T entity, PreparedStatement preparedStatement) throws SQLException;
 
