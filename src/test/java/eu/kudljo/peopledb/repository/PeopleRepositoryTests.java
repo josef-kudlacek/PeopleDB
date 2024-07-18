@@ -3,10 +3,7 @@ package eu.kudljo.peopledb.repository;
 import eu.kudljo.peopledb.model.Address;
 import eu.kudljo.peopledb.model.Person;
 import eu.kudljo.peopledb.model.Region;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -26,11 +23,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class PeopleRepositoryTests {
 
-    private Connection connection;
-    private PeopleRepository peopleRepository;
+    private static Connection connection;
+    private static PeopleRepository peopleRepository;
 
-    @BeforeEach
-    void setUp() throws SQLException {
+    @BeforeAll
+    static void setUp() throws SQLException {
         connection = DriverManager
                 .getConnection("jdbc:h2:C:\\squirrel-sql-4.7.1\\db\\peopletest");
         connection.setAutoCommit(false);
@@ -38,7 +35,12 @@ public class PeopleRepositoryTests {
     }
 
     @AfterEach
-    void tearDown() throws SQLException {
+    void reset() throws SQLException {
+        connection.rollback();
+    }
+
+    @AfterAll
+    static void tearDown() throws SQLException {
         if (connection != null) {
             connection.close();
         }
