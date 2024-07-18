@@ -42,7 +42,13 @@ public class PeopleRepository extends CRUDRepository<Person> {
             ON PARENT.SPOUSE = SPOUSE.ID
             WHERE PARENT.ID = ?
             """;
-    private static final String FIND_ALL_SQL = "SELECT ID, FIRST_NAME, LAST_NAME, DOB, SALARY, HOME_ADDRESS FROM PEOPLE";
+    private static final String FIND_ALL_SQL = """
+            SELECT 
+            PARENT.ID AS PARENT_ID, PARENT.FIRST_NAME AS PARENT_FIRST_NAME, PARENT.LAST_NAME AS PARENT_LAST_NAME,
+            PARENT.DOB AS PARENT_DOB, PARENT.SALARY AS PARENT_SALARY, PARENT.EMAIL AS PARENT_EMAIL,
+            FROM PEOPLE AS PARENT
+            FETCH FIRST 100 ROWS ONLY
+            """;
     private static final String COUNT_PEOPLE_SQL = "SELECT COUNT(*) AS COUNT FROM PEOPLE";
     private static final String DELETE_PERSON_BY_ID_SQL = "DELETE FROM PEOPLE WHERE ID = ?";
     private static final String DELETE_PEOPLE_BY_IDS_SQL = "DELETE FROM PEOPLE WHERE ID IN (:ids)";
@@ -92,24 +98,23 @@ public class PeopleRepository extends CRUDRepository<Person> {
     Person extractEntityFromResultSet(ResultSet resultSet) throws SQLException {
         Person person = null;
         do {
-            Optional<Person> foundPersonOpt = extractPerson(resultSet, "PARENT_");
-            if (foundPersonOpt.isPresent()) {
-                Person foundPerson = foundPersonOpt.get();
-                if (!foundPerson.equals(person)) {
-                    Address homeAddress = extractAddress(resultSet, "HOME_");
-                    foundPerson.setHomeAddress(homeAddress);
-                    Address businessAddress = extractAddress(resultSet, "BIZ_");
-                    foundPerson.setBusinessAddress(businessAddress);
-                    Optional<Person> spouse = extractPerson(resultSet, "S_");
-                    spouse.ifPresent(foundPerson::setSpouse);
-                    person = foundPerson;
-                }
+            Person currentPerson = extractPerson(resultSet, "PARENT_").get();
+            if (person == null) {
+                person = currentPerson;
+            } if (!person.equals(currentPerson)) {
+                resultSet.previous();
+                break;
             }
 
             Optional<Person> child = extractPerson(resultSet, "CHILD_");
-            if (child.isPresent()) {
-                person.addChild(child.get());
-            }
+
+            Address homeAddress = extractAddress(resultSet, "HOME_");
+            person.setHomeAddress(homeAddress);
+            Address businessAddress = extractAddress(resultSet, "BIZ_");
+            person.setBusinessAddress(businessAddress);
+            Optional<Person> spouse = extractPerson(resultSet, "S_");
+            spouse.ifPresent(person::setSpouse);
+            child.ifPresent(person::addChild);
         } while (resultSet.next());
         return person;
     }
@@ -151,7 +156,7 @@ public class PeopleRepository extends CRUDRepository<Person> {
             }
         }
 
-        throw new SQLException(String.format("Column not found for alias: '%s'", alias));
+        return null;
     }
 
     private static Timestamp convertDobToTimestamp(ZonedDateTime dob) {

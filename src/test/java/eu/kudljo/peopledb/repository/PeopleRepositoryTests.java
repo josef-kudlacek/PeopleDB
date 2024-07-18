@@ -217,7 +217,6 @@ public class PeopleRepositoryTests {
     }
 
     @Test
-    @Disabled
     public void canFindAll() {
         peopleRepository.save(
                 new Person("John", "Smith",
