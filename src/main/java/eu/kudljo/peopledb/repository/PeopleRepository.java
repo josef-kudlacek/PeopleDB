@@ -10,6 +10,8 @@ import java.math.BigDecimal;
 import java.sql.*;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class PeopleRepository extends CRUDRepository<Person> {
@@ -53,6 +55,8 @@ public class PeopleRepository extends CRUDRepository<Person> {
     private static final String DELETE_PERSON_BY_ID_SQL = "DELETE FROM PEOPLE WHERE ID = ?";
     private static final String DELETE_PEOPLE_BY_IDS_SQL = "DELETE FROM PEOPLE WHERE ID IN (:ids)";
     private static final String UPDATE_PERSON_BY_ID_SQL = "UPDATE PEOPLE SET FIRST_NAME = ?, LAST_NAME = ?, DOB = ?, SALARY = ? WHERE ID = ?";
+
+    private Map<String, Integer> aliasColumnIndexMap = new HashMap<>();
 
     public PeopleRepository(Connection connection) {
         super(connection);
@@ -150,13 +154,22 @@ public class PeopleRepository extends CRUDRepository<Person> {
 
     private <T> T getValueByAlias(String alias, ResultSet resultSet, Class<T> clazz) throws SQLException {
         int columnCount = resultSet.getMetaData().getColumnCount();
-        for (int columnIndex = 1; columnIndex <= columnCount; columnIndex++) {
-            if (alias.equals(resultSet.getMetaData().getColumnLabel(columnIndex))) {
-                return (T) resultSet.getObject(columnIndex);
+        Integer foundIndex = getIndexForAlias(alias, resultSet, columnCount);
+        return foundIndex == 0 ? null : (T) resultSet.getObject(foundIndex);
+    }
+
+    private int getIndexForAlias(String alias, ResultSet resultSet, int columnCount) throws SQLException {
+        int foundIndex = aliasColumnIndexMap.getOrDefault(alias, 0);
+        if (foundIndex == 0) {
+            for (int columnIndex = 1; columnIndex <= columnCount; columnIndex++) {
+                if (alias.equals(resultSet.getMetaData().getColumnLabel(columnIndex))) {
+                    foundIndex = columnIndex;
+                    aliasColumnIndexMap.put(alias, foundIndex);
+                    break;
+                }
             }
         }
-
-        return null;
+        return foundIndex;
     }
 
     private static Timestamp convertDobToTimestamp(ZonedDateTime dob) {
