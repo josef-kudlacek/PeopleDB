@@ -21,6 +21,7 @@ public class Person {
     private String email;
     private Optional<Address> homeAddress = Optional.empty();
     private Optional<Address> businessAddress = Optional.empty();
+    private Optional<Person> spouse = Optional.empty();
 
 
     public Person(long personId, String firstName, String lastName, ZonedDateTime dob, BigDecimal salary) {
@@ -101,6 +102,14 @@ public class Person {
 
     public void setBusinessAddress(Address businessAddress) {
         this.businessAddress = Optional.ofNullable(businessAddress);
+    }
+
+    public void setSpouse(Person spouse) {
+        this.spouse = Optional.ofNullable(spouse);
+    }
+
+    public Optional<Person> getSpouse() {
+        return spouse;
     }
 
     @Override
